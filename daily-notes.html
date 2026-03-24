@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Daily Notes</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,300;0,400;1,300&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    --ink: #1a1a1a;
+    --paper: #f5f2ec;
+    --paper-dark: #ede9e1;
+    --rule: #c8c2b8;
+    --faint: #a09890;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: 'Newsreader', Georgia, serif;
+    font-weight: 300;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    border-bottom: 2px solid var(--ink);
+    padding: 14px 20px 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    background: var(--paper);
+    z-index: 10;
+  }
+
+  .app-title {
+    font-family: 'Newsreader', serif;
+    font-size: 21px;
+    font-weight: 400;
+    letter-spacing: -0.3px;
+  }
+
+  .sync-status {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .sync-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--rule);
+    flex-shrink: 0;
+  }
+  .sync-dot.synced  { background: #4a7a4a; }
+  .sync-dot.syncing { background: #b8860b; animation: blink 1s infinite; }
+  .sync-dot.error   { background: #8b2020; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.25} }
+
+  .sync-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--faint);
+    letter-spacing: 0.4px;
+  }
+
+  nav {
+    display: flex;
+    border-bottom: 1px solid var(--rule);
+    padding: 0 20px;
+    background: var(--paper);
+    position: sticky;
+    top: 51px;
+    z-index: 9;
+  }
+
+  .tab {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 14px 8px;
+    cursor: pointer;
+    border: none;
+    background: none;
+    color: var(--faint);
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab.active { color: var(--ink); border-bottom-color: var(--ink); }
+
+  main {
+    flex: 1;
+    max-width: 700px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 0 20px 90px;
+  }
+
+  /* TODAY */
+  .date-heading {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--faint);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 14px 0 10px;
+    border-bottom: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .note-area {
+    width: 100%;
+    min-height: calc(100vh - 210px);
+    background: transparent;
+    border: none;
+    outline: none;
+    resize: none;
+    font-family: 'Newsreader', serif;
+    font-size: 18px;
+    font-weight: 300;
+    line-height: 1.8;
+    color: var(--ink);
+    padding: 18px 0;
+    caret-color: var(--ink);
+  }
+  .note-area::placeholder { color: var(--rule); font-style: italic; }
+
+  .template-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--faint);
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .template-btn:hover { border-color: var(--ink); color: var(--ink); }
+
+  .save-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 9px 20px;
+    background: var(--paper);
+    border-top: 1px solid var(--rule);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    z-index: 20;
+  }
+
+  .save-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+  }
+
+  .char-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--faint);
+  }
+
+  .flash {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--faint);
+    opacity: 0;
+    transition: opacity 0.3s;
+    pointer-events: none;
+  }
+  .flash.show { opacity: 1; }
+
+  .btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    border: 1.5px solid var(--ink);
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    white-space: nowrap;
+    line-height: 1;
+  }
+  .btn:hover { background: var(--ink); color: var(--paper); }
+  .btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+  .btn.primary { background: var(--ink); color: var(--paper); }
+  .btn.primary:hover { background: #3a3a3a; border-color: #3a3a3a; }
+  .btn.sm { padding: 5px 10px; font-size: 10px; }
+  .btn.ghost { border-color: var(--rule); color: var(--faint); }
+  .btn.ghost:hover { border-color: var(--ink); color: var(--ink); background: transparent; }
+
+  /* LOG */
+  .section-header {
+    padding: 14px 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section-header-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--faint);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 2px 6px;
+  }
+
+  .log-entry {
+    border-bottom: 1px solid var(--rule);
+    padding: 14px 0;
+  }
+
+  .log-meta {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--faint);
+    letter-spacing: 0.6px;
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .log-preview {
+    font-size: 16px;
+    line-height: 1.65;
+    color: var(--ink);
+    cursor: pointer;
+    white-space: pre-wrap;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .log-preview.expanded { display: block; }
+
+  .empty-state {
+    text-align: center;
+    padding: 60px 0;
+    color: var(--faint);
+    font-style: italic;
+    font-size: 16px;
+  }
+
+  /* AI */
+  .ai-block {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .block-label {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--faint);
+    margin-bottom: 12px;
+  }
+
+  .range-row {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 12px;
+    flex-wrap: wrap;
+  }
+
+  .range-btn {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    padding: 5px 12px;
+    border: 1px solid var(--rule);
+    background: transparent;
+    color: var(--faint);
+    cursor: pointer;
+  }
+  .range-btn.active { border-color: var(--ink); color: var(--ink); background: var(--paper-dark); }
+
+  .ai-input {
+    width: 100%;
+    font-family: 'Newsreader', serif;
+    font-size: 16px;
+    background: var(--paper-dark);
+    border: 1px solid var(--rule);
+    outline: none;
+    padding: 10px 14px;
+    color: var(--ink);
+    resize: none;
+    line-height: 1.5;
+    margin-bottom: 10px;
+  }
+  .ai-input:focus { border-color: var(--ink); }
+
+  .ai-response {
+    margin-top: 14px;
+    padding: 16px;
+    background: var(--paper-dark);
+    border-left: 3px solid var(--ink);
+    font-size: 16px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+  }
+  .ai-response.loading { color: var(--faint); font-style: italic; }
+
+  /* SETTINGS */
+  .settings-block {
+    padding: 20px 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .settings-desc { font-size: 15px; color: var(--ink); }
+  .settings-sub  { font-size: 12px; color: var(--faint); margin-top: 3px; font-family: 'JetBrains Mono', monospace; }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(245,242,236,0.96);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .modal-overlay.hidden { display: none; }
+
+  .modal {
+    max-width: 460px;
+    width: 100%;
+    border: 2px solid var(--ink);
+    padding: 28px;
+    background: var(--paper);
+  }
+
+  .modal h2 {
+    font-family: 'Newsreader', serif;
+    font-size: 21px;
+    font-weight: 400;
+    margin-bottom: 8px;
+  }
+
+  .modal p {
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--faint);
+    margin-bottom: 18px;
+  }
+
+  .modal ol {
+    font-size: 14px;
+    line-height: 1.85;
+    margin: 0 0 18px 18px;
+    color: var(--ink);
+  }
+
+  .modal a { color: var(--ink); }
+
+  .token-input {
+    width: 100%;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    padding: 10px 14px;
+    border: 1.5px solid var(--rule);
+    background: var(--paper-dark);
+    color: var(--ink);
+    outline: none;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+  }
+  .token-input:focus { border-color: var(--ink); }
+
+  .modal-error {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: #8b2020;
+    margin-bottom: 12px;
+    min-height: 14px;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+</style>
+</head>
+<body>
+
+<!-- Setup modal -->
+<div class="modal-overlay" id="setup-modal">
+  <div class="modal">
+    <h2>Connect GitHub Gist</h2>
+    <p>Your notes will be stored as a private Gist — readable from any browser on any device.</p>
+    <ol>
+      <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank">github.com → Settings → Developer settings → Personal access tokens → Tokens (classic)</a></li>
+      <li>Give it a name, e.g. <em>daily notes</em></li>
+      <li>Tick only the <strong>gist</strong> scope</li>
+      <li>Generate and paste the token below</li>
+    </ol>
+    <input class="token-input" type="password" id="token-input" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx" autocomplete="off" />
+    <div style="margin-bottom:12px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.8px;text-transform:uppercase;color:var(--faint);margin-bottom:6px;">Existing Gist ID <span style="text-transform:none;letter-spacing:0;">(optional — paste from another device to sync)</span></div>
+      <input class="token-input" type="text" id="gist-id-input" placeholder="leave blank to create a new Gist" autocomplete="off" style="margin-bottom:0;" />
+    </div>
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="skipSetup()">Skip for now</button>
+      <button class="btn primary" id="connect-btn" onclick="connectGist()">Connect</button>
+    </div>
+  </div>
+</div>
+
+<header>
+  <span class="app-title">Daily Notes</span>
+  <div class="sync-status">
+    <span class="sync-dot" id="sync-dot"></span>
+    <span class="sync-label" id="sync-label"></span>
+    <button class="btn sm ghost" id="sync-btn" onclick="syncNow()" style="display:none;">Sync</button>
+  </div>
+</header>
+
+<nav>
+  <button class="tab active" onclick="switchTab('today')">Today</button>
+  <button class="tab" onclick="switchTab('log')">Log</button>
+  <button class="tab" onclick="switchTab('ai')">AI</button>
+  <button class="tab" onclick="switchTab('settings')">Settings</button>
+</nav>
+
+<main>
+
+  <!-- TODAY -->
+  <div id="view-today">
+    <div class="date-heading">
+      <span id="today-heading"></span>
+      <button class="template-btn" onclick="insertTemplate()" id="template-btn">+ Template</button>
+    </div>
+    <textarea class="note-area" id="note-input" placeholder="Start writing…"></textarea>
+  </div>
+
+  <!-- LOG -->
+  <div id="view-log" style="display:none;">
+    <div class="section-header">
+      <span class="section-header-label">All entries</span>
+      <span class="badge" id="log-count">0</span>
+    </div>
+    <div id="log-list"></div>
+  </div>
+
+  <!-- AI -->
+  <div id="view-ai" style="display:none;">
+    <div class="ai-block">
+      <div class="block-label">Summarise</div>
+      <div class="range-row" id="summary-range">
+        <button class="range-btn active" data-days="7"   onclick="setRange(this,'summary')">7 days</button>
+        <button class="range-btn"        data-days="14"  onclick="setRange(this,'summary')">14 days</button>
+        <button class="range-btn"        data-days="30"  onclick="setRange(this,'summary')">30 days</button>
+        <button class="range-btn"        data-days="999" onclick="setRange(this,'summary')">All</button>
+      </div>
+      <button class="btn primary" onclick="runSummary()">Summarise notes</button>
+      <div class="ai-response" id="summary-output" style="display:none;"></div>
+    </div>
+    <div class="ai-block">
+      <div class="block-label">Search &amp; ask</div>
+      <textarea class="ai-input" id="search-input" placeholder="Ask anything about your notes…" rows="2"></textarea>
+      <button class="btn primary" onclick="runSearch()">Ask</button>
+      <div class="ai-response" id="search-output" style="display:none;"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="view-settings" style="display:none;">
+    <div class="settings-block">
+      <div class="block-label">GitHub Gist sync</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-desc" id="gist-status-text">Not connected</div>
+          <div class="settings-sub"  id="gist-id-text"></div>
+        </div>
+        <button class="btn sm" id="gist-action-btn" onclick="resetGist()">Connect</button>
+      </div>
+    </div>
+    <div class="settings-block">
+      <div class="block-label">Export</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-desc">Download all notes</div>
+          <div class="settings-sub">Saves as a plain markdown file</div>
+        </div>
+        <button class="btn sm" onclick="exportNotes()">Export .md</button>
+      </div>
+    </div>
+    <div class="settings-block">
+      <div class="block-label">Local data</div>
+      <div class="settings-row">
+        <div>
+          <div class="settings-desc">Clear this device</div>
+          <div class="settings-sub">Notes remain in your Gist</div>
+        </div>
+        <button class="btn sm ghost" onclick="clearLocal()">Clear</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="save-bar" id="save-bar">
+  <div class="save-bar-left">
+    <span class="char-count" id="char-count">0 chars</span>
+    <span class="flash" id="saved-flash">Saved</span>
+  </div>
+  <button class="btn sm ghost" id="save-sync-btn" onclick="saveAndSync()" style="display:none;">Save &amp; Sync</button>
+  <button class="btn primary" onclick="saveNote()">Save</button>
+</div>
+
+<script>
+// ── Helpers ───────────────────────────────────────────────────
+const todayKey = () => new Date().toISOString().slice(0,10);
+const fmtDate  = d => {
+  const [y,m,day] = d.split('-');
+  return new Date(y, m-1, day).toLocaleDateString('en-GB', {
+    weekday:'long', day:'numeric', month:'long', year:'numeric'
+  });
+};
+const escHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+// ── Local storage ─────────────────────────────────────────────
+const getToken  = ()  => localStorage.getItem('gh_token');
+const getGistId = ()  => localStorage.getItem('gh_gist_id');
+const setToken  = t   => localStorage.setItem('gh_token', t);
+const setGistId = id  => localStorage.setItem('gh_gist_id', id);
+
+function getAllNotes() {
+  const notes = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('note_')) {
+      const c = localStorage.getItem(k);
+      if (c && c.trim()) notes.push({ date: k.slice(5), content: c });
+    }
+  }
+  return notes.sort((a,b) => b.date.localeCompare(a.date));
+}
+
+// ── Markdown serialisation ────────────────────────────────────
+const GIST_FILE = 'daily-notes.md';
+
+function toMd(notes) {
+  return notes.map(n =>
+    `# ${fmtDate(n.date)}\n<!--date:${n.date}-->\n\n${n.content}`
+  ).join('\n\n---\n\n');
+}
+
+function fromMd(md) {
+  return md.split(/\n\n---\n\n/).flatMap(sec => {
+    const m = sec.match(/<!--date:(\d{4}-\d{2}-\d{2})-->/);
+    if (!m) return [];
+    const content = sec
+      .replace(/^#[^\n]*\n/, '')
+      .replace(/<!--date:[^>]+-->/, '')
+      .trim();
+    return content ? [{ date: m[1], content }] : [];
+  });
+}
+
+// ── Sync status ───────────────────────────────────────────────
+function setSyncStatus(state, label) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + (state||'');
+  document.getElementById('sync-label').textContent = label||'';
+}
+
+function showSyncButtons(show) {
+  document.getElementById('sync-btn').style.display      = show ? 'inline-block' : 'none';
+  document.getElementById('save-sync-btn').style.display = show ? 'inline-block' : 'none';
+}
+
+// ── GitHub API ────────────────────────────────────────────────
+async function gh(path, opts={}) {
+  return fetch('https://api.github.com' + path, {
+    ...opts,
+    headers: {
+      'Authorization': 'token ' + getToken(),
+      'Accept': 'application/vnd.github.v3+json',
+      'Content-Type': 'application/json',
+      ...(opts.headers||{})
+    }
+  });
+}
+
+async function createGist(notes) {
+  const content = notes.length ? toMd(notes) : '# Daily Notes\n\nYour notes will appear here.\n';
+  const res = await gh('/gists', {
+    method: 'POST',
+    body: JSON.stringify({
+      description: 'Daily Notes — synced notes',
+      public: false,
+      files: { [GIST_FILE]: { content } }
+    })
+  });
+  if (!res.ok) throw new Error('Could not create Gist (' + res.status + ')');
+  return (await res.json()).id;
+}
+
+async function pushGist() {
+  const res = await gh('/gists/' + getGistId(), {
+    method: 'PATCH',
+    body: JSON.stringify({ files: { [GIST_FILE]: { content: toMd(getAllNotes()) } } })
+  });
+  if (!res.ok) throw new Error('Push failed (' + res.status + ')');
+}
+
+async function pullGist() {
+  const res = await gh('/gists/' + getGistId());
+  if (!res.ok) throw new Error('Pull failed (' + res.status + ')');
+  const data = await res.json();
+  return fromMd(data.files[GIST_FILE]?.content || '');
+}
+
+function mergeNotes(local, remote) {
+  const map = {};
+  local.forEach(n  => map[n.date] = n.content);
+  remote.forEach(n => map[n.date] = n.content); // remote wins on conflict
+  return Object.entries(map)
+    .map(([date,content]) => ({date,content}))
+    .sort((a,b) => b.date.localeCompare(a.date));
+}
+
+// ── Connect ───────────────────────────────────────────────────
+async function connectGist() {
+  const token   = document.getElementById('token-input').value.trim();
+  const gistIn  = document.getElementById('gist-id-input').value.trim();
+  const errEl   = document.getElementById('modal-error');
+  const btn     = document.getElementById('connect-btn');
+  if (!token) { errEl.textContent = 'Please enter your token.'; return; }
+
+  btn.disabled = true; btn.textContent = 'Connecting…'; errEl.textContent = '';
+  try {
+    setToken(token);
+    const me = await gh('/user');
+    if (!me.ok) throw new Error('Token invalid — please check and try again.');
+
+    let id;
+    if (gistIn) {
+      // Verify the provided Gist ID is accessible
+      const check = await gh('/gists/' + gistIn);
+      if (!check.ok) throw new Error('Could not access that Gist ID — check it and try again.');
+      id = gistIn;
+      // Pull remote notes and merge with any local ones
+      const remote = fromMd((await check.json()).files[GIST_FILE]?.content || '');
+      const merged = mergeNotes(getAllNotes(), remote);
+      merged.forEach(n => localStorage.setItem('note_' + n.date, n.content));
+    } else {
+      id = await createGist(getAllNotes());
+    }
+
+    setGistId(id);
+    document.getElementById('setup-modal').classList.add('hidden');
+    setSyncStatus('synced', 'Connected');
+    showSyncButtons(true);
+    updateSettingsPanel();
+    showFlash('Connected');
+  } catch(e) {
+    errEl.textContent = e.message;
+    btn.disabled = false; btn.textContent = 'Connect';
+  }
+}
+
+function skipSetup() {
+  document.getElementById('setup-modal').classList.add('hidden');
+  setSyncStatus('', 'Local only');
+}
+
+// ── Sync ──────────────────────────────────────────────────────
+async function syncNow() {
+  if (!getToken() || !getGistId()) return;
+  document.getElementById('sync-btn').disabled = true;
+  setSyncStatus('syncing', 'Syncing…');
+  try {
+    const remote = await pullGist();
+    const merged = mergeNotes(getAllNotes(), remote);
+    merged.forEach(n => localStorage.setItem('note_' + n.date, n.content));
+    await pushGist();
+    // Refresh textarea if today changed
+    const fresh = localStorage.getItem('note_' + todayKey()) || '';
+    if (noteInput.value !== fresh) { noteInput.value = fresh; updateCharCount(); }
+    const t = new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'});
+    setSyncStatus('synced', 'Synced ' + t);
+    showFlash('Synced');
+  } catch(e) {
+    setSyncStatus('error', 'Sync failed');
+    showFlash('Sync failed');
+    console.error(e);
+  } finally {
+    document.getElementById('sync-btn').disabled = false;
+  }
+}
+
+async function saveAndSync() { saveNote(); await syncNow(); }
+
+// ── Init ──────────────────────────────────────────────────────
+const today    = todayKey();
+const noteInput = document.getElementById('note-input');
+document.getElementById('today-heading').textContent = fmtDate(today);
+noteInput.value = localStorage.getItem('note_' + today) || '';
+
+// ── Template ──────────────────────────────────────────────────
+// Rotating evening prompts — cycles by day-of-year mod 3
+const ROTATING_PROMPTS = [
+  'Is there anything I avoided that needs doing tomorrow?',
+  'What did I do today that yesterday\'s version of me couldn\'t do?',
+  'Where did I measure myself against someone else — and what was I really looking for?'
+];
+
+function getRotatingPrompt(dateStr) {
+  const d = new Date(dateStr);
+  const dayOfYear = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 86400000);
+  return ROTATING_PROMPTS[dayOfYear % ROTATING_PROMPTS.length];
+}
+
+function buildTemplate(dateStr) {
+  const rotating = getRotatingPrompt(dateStr);
+  return `MORNING
+—————————————————
+Vision:
+
+Goals:
+
+Gratitude:
+
+Intention:
+
+Small win I'm carrying forward:
+
+
+MAIN
+—————————————————
+
+
+EVENING
+—————————————————
+Where did I hold back today? Where did I show up fully?
+
+
+What did I do today that yesterday's version of me couldn't do?
+
+
+${rotating}
+
+`;
+}
+
+function insertTemplate() {
+  const editDate = noteInput.dataset.editDate || today;
+  if (noteInput.value.trim()) {
+    if (!confirm('This will replace your current note with the template. Continue?')) return;
+  }
+  noteInput.value = buildTemplate(editDate);
+  updateCharCount();
+  noteInput.focus();
+  // Move cursor to after "Vision:"
+  const pos = noteInput.value.indexOf('Vision:') + 7;
+  noteInput.setSelectionRange(pos + 1, pos + 1);
+}
+
+// Auto-insert template on a fresh day
+if (!noteInput.value.trim()) {
+  noteInput.value = buildTemplate(today);
+  updateCharCount();
+}
+
+function updateCharCount() {
+  const n = noteInput.value.length;
+  document.getElementById('char-count').textContent = n + (n===1?' char':' chars');
+}
+updateCharCount();
+noteInput.addEventListener('input', updateCharCount);
+setInterval(() => { if (noteInput.value.trim()) localStorage.setItem('note_' + today, noteInput.value); }, 30000);
+
+if (getToken() && getGistId()) {
+  document.getElementById('setup-modal').classList.add('hidden');
+  setSyncStatus('synced', 'Connected');
+  showSyncButtons(true);
+  syncNow();
+} else {
+  setSyncStatus('', '');
+  setTimeout(() => document.getElementById('setup-modal').classList.remove('hidden'), 200);
+}
+
+// ── Save ──────────────────────────────────────────────────────
+function saveNote() {
+  const date = noteInput.dataset.editDate || today;
+  if (!noteInput.value.trim()) return;
+  localStorage.setItem('note_' + date, noteInput.value);
+  showFlash('Saved');
+}
+
+function showFlash(msg) {
+  const fl = document.getElementById('saved-flash');
+  fl.textContent = msg; fl.classList.add('show');
+  setTimeout(() => fl.classList.remove('show'), 2000);
+}
+
+// ── Tabs ──────────────────────────────────────────────────────
+function switchTab(tab) {
+  ['today','log','ai','settings'].forEach((t,i) => {
+    document.getElementById('view-'+t).style.display = t===tab?'block':'none';
+    document.querySelectorAll('.tab')[i].classList.toggle('active', t===tab);
+  });
+  document.getElementById('save-bar').style.display = tab==='today'?'flex':'none';
+  if (tab==='log') renderLog();
+  if (tab==='settings') updateSettingsPanel();
+}
+
+// ── Log ───────────────────────────────────────────────────────
+function renderLog() {
+  const notes = getAllNotes();
+  document.getElementById('log-count').textContent = notes.length;
+  const list = document.getElementById('log-list');
+  if (!notes.length) { list.innerHTML = '<div class="empty-state">No entries yet.</div>'; return; }
+  list.innerHTML = notes.map(n => `
+    <div class="log-entry">
+      <div class="log-meta">
+        <span>${fmtDate(n.date)}</span>
+        <button class="btn sm ghost" onclick="openEntry('${n.date}')">Edit</button>
+      </div>
+      <div class="log-preview" onclick="this.classList.toggle('expanded')">${escHtml(n.content)}</div>
+    </div>`).join('');
+}
+
+function openEntry(date) {
+  switchTab('today');
+  noteInput.value = localStorage.getItem('note_' + date) || '';
+  noteInput.dataset.editDate = date;
+  document.getElementById('today-heading').textContent =
+    fmtDate(date) + (date===today ? '' : ' · editing past entry');
+  document.getElementById('template-btn').style.display = date===today ? 'inline-block' : 'none';
+  updateCharCount();
+}
+
+// ── AI ────────────────────────────────────────────────────────
+let summaryDays = 7;
+
+function setRange(btn, section) {
+  document.querySelectorAll('#'+section+'-range .range-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  if (section==='summary') summaryDays = parseInt(btn.dataset.days);
+}
+
+function notesForDays(days) {
+  const notes = getAllNotes();
+  if (days >= 999) return notes;
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-days);
+  return notes.filter(n => n.date >= cutoff.toISOString().slice(0,10));
+}
+
+function buildContext(notes) {
+  return notes.map(n => `=== ${fmtDate(n.date)} ===\n${n.content}`).join('\n\n');
+}
+
+async function claude(system, user) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system,
+      messages: [{ role: 'user', content: user }]
+    })
+  });
+  return (await res.json()).content?.map(b=>b.text||'').join('') || 'No response.';
+}
+
+async function runSummary() {
+  const notes = notesForDays(summaryDays);
+  const out = document.getElementById('summary-output');
+  out.style.display = 'block';
+  if (!notes.length) { out.className='ai-response'; out.textContent='No notes in that range.'; return; }
+  out.className='ai-response loading'; out.textContent='Summarising…';
+  const label = summaryDays>=999 ? 'all time' : `the past ${summaryDays} days`;
+  try {
+    out.textContent = await claude(
+      "Summarise the user's personal notes concisely. Highlight key themes, recurring topics, and anything notable. Be brief and direct.",
+      `Summarise my notes from ${label}:\n\n${buildContext(notes)}`
+    );
+    out.className = 'ai-response';
+  } catch(e) { out.textContent='Error: '+e.message; out.className='ai-response'; }
+}
+
+async function runSearch() {
+  const query = document.getElementById('search-input').value.trim();
+  if (!query) return;
+  const out = document.getElementById('search-output');
+  out.style.display='block'; out.className='ai-response loading'; out.textContent='Thinking…';
+  const notes = getAllNotes();
+  if (!notes.length) { out.textContent='No notes yet.'; return; }
+  try {
+    out.textContent = await claude(
+      "Answer the user's question using their notes. Quote relevant parts if helpful. Say clearly if the information isn't there.",
+      `My notes:\n\n${buildContext(notes)}\n\n---\nQuestion: ${query}`
+    );
+    out.className = 'ai-response';
+  } catch(e) { out.textContent='Error: '+e.message; out.className='ai-response'; }
+}
+
+document.getElementById('search-input').addEventListener('keydown', e => {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); runSearch(); }
+});
+
+// ── Settings ──────────────────────────────────────────────────
+function updateSettingsPanel() {
+  const gistId = getGistId(), token = getToken();
+  const statusEl = document.getElementById('gist-status-text');
+  const idEl     = document.getElementById('gist-id-text');
+  const actionBtn = document.getElementById('gist-action-btn');
+  if (gistId && token) {
+    statusEl.textContent = 'Connected';
+    idEl.textContent     = 'Gist: ' + gistId;
+    actionBtn.textContent = 'Disconnect';
+    actionBtn.onclick     = disconnectGist;
+  } else {
+    statusEl.textContent  = 'Not connected';
+    idEl.textContent      = '';
+    actionBtn.textContent = 'Connect';
+    actionBtn.onclick     = resetGist;
+  }
+}
+
+function resetGist() {
+  document.getElementById('setup-modal').classList.remove('hidden');
+  document.getElementById('token-input').value = '';
+  document.getElementById('gist-id-input').value = '';
+  document.getElementById('modal-error').textContent = '';
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = false; btn.textContent = 'Connect';
+}
+
+function disconnectGist() {
+  if (!confirm('Disconnect? Local notes remain, sync will stop.')) return;
+  localStorage.removeItem('gh_token');
+  localStorage.removeItem('gh_gist_id');
+  setSyncStatus('', 'Local only');
+  showSyncButtons(false);
+  updateSettingsPanel();
+}
+
+function exportNotes() {
+  const notes = getAllNotes();
+  if (!notes.length) { alert('No notes to export.'); return; }
+  const blob = new Blob([toMd(notes)], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'daily-notes.md';
+  a.click();
+}
+
+function clearLocal() {
+  if (!confirm('Remove all notes from this device? Your Gist backup is unaffected.')) return;
+  const keys = [];
+  for (let i=0; i<localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('note_')) keys.push(k);
+  }
+  keys.forEach(k => localStorage.removeItem(k));
+  noteInput.value = ''; updateCharCount();
+  showFlash('Cleared');
+}
+</script>
+</body>
+</html>
