@@ -650,7 +650,11 @@ async function pullGist() {
 function mergeNotes(local, remote) {
   const map = {};
   local.forEach(n  => map[n.date] = n.content);
-  remote.forEach(n => map[n.date] = n.content); // remote wins on conflict
+  // Remote wins for past dates; local wins for today (just saved)
+  const currentToday = todayKey();
+  remote.forEach(n => {
+    if (n.date !== currentToday) map[n.date] = n.content;
+  });
   return Object.entries(map)
     .map(([date,content]) => ({date,content}))
     .sort((a,b) => b.date.localeCompare(a.date));
