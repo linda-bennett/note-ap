@@ -567,10 +567,18 @@ function getAllNotes() {
     const k = localStorage.key(i);
     if (k && k.startsWith('note_')) {
       const c = localStorage.getItem(k);
-      if (c && c.trim()) notes.push({ date: k.slice(5), content: c });
+      if (c && c.trim()) {
+        const ts = localStorage.getItem('ts_' + k.slice(5));
+        notes.push({ date: k.slice(5), content: c, ts: ts ? parseInt(ts) : 0 });
+      }
     }
   }
   return notes.sort((a,b) => b.date.localeCompare(a.date));
+}
+
+function saveNoteWithTimestamp(date, content) {
+  localStorage.setItem('note_' + date, content);
+  localStorage.setItem('ts_' + date, Date.now().toString());
 }
 
 // ── Markdown serialisation ────────────────────────────────────
@@ -578,19 +586,22 @@ const GIST_FILE = 'daily-notes.md';
 
 function toMd(notes) {
   return notes.map(n =>
-    `# ${fmtDate(n.date)}\n<!--date:${n.date}-->\n\n${n.content}`
+    `# ${fmtDate(n.date)}\n<!--date:${n.date}--><!--ts:${n.ts||0}-->\n\n${n.content}`
   ).join('\n\n---\n\n');
 }
 
 function fromMd(md) {
   return md.split(/\n\n---\n\n/).flatMap(sec => {
-    const m = sec.match(/<!--date:(\d{4}-\d{2}-\d{2})-->/);
-    if (!m) return [];
+    const dateM = sec.match(/<!--date:(\d{4}-\d{2}-\d{2})-->/);
+    if (!dateM) return [];
+    const tsM = sec.match(/<!--ts:(\d+)-->/);
+    const ts = tsM ? parseInt(tsM[1]) : 0;
     const content = sec
       .replace(/^#[^\n]*\n/, '')
-      .replace(/<!--date:[^>]+-->/, '')
+      .replace(/<!--date:[^>]+-->/g, '')
+      .replace(/<!--ts:[^>]+-->/g, '')
       .trim();
-    return content ? [{ date: m[1], content }] : [];
+    return content ? [{ date: dateM[1], content, ts }] : [];
   });
 }
 
@@ -649,14 +660,17 @@ async function pullGist() {
 
 function mergeNotes(local, remote) {
   const map = {};
-  local.forEach(n  => map[n.date] = n.content);
-  // Remote wins for past dates; local wins for today (just saved)
-  const currentToday = todayKey();
+  // Index local by date
+  local.forEach(n => map[n.date] = { content: n.content, ts: n.ts || 0 });
+  // Remote wins only if its timestamp is newer
   remote.forEach(n => {
-    if (n.date !== currentToday) map[n.date] = n.content;
+    const existing = map[n.date];
+    if (!existing || (n.ts || 0) > existing.ts) {
+      map[n.date] = { content: n.content, ts: n.ts || 0 };
+    }
   });
   return Object.entries(map)
-    .map(([date,content]) => ({date,content}))
+    .map(([date, {content, ts}]) => ({ date, content, ts }))
     .sort((a,b) => b.date.localeCompare(a.date));
 }
 
@@ -713,7 +727,10 @@ async function syncNow() {
   try {
     const remote = await pullGist();
     const merged = mergeNotes(getAllNotes(), remote);
-    merged.forEach(n => localStorage.setItem('note_' + n.date, n.content));
+    merged.forEach(n => {
+      localStorage.setItem('note_' + n.date, n.content);
+      localStorage.setItem('ts_' + n.date, (n.ts || 0).toString());
+    });
     await pushGist();
     // Refresh textarea if today changed
     const fresh = localStorage.getItem('note_' + todayKey()) || '';
@@ -809,7 +826,7 @@ function updateCharCount() {
 }
 updateCharCount();
 noteInput.addEventListener('input', updateCharCount);
-setInterval(() => { if (noteInput.value.trim()) localStorage.setItem('note_' + today, noteInput.value); }, 30000);
+setInterval(() => { if (noteInput.value.trim()) saveNoteWithTimestamp(today, noteInput.value); }, 30000);
 
 if (getToken() && getGistId()) {
   document.getElementById('setup-modal').classList.add('hidden');
@@ -825,7 +842,7 @@ if (getToken() && getGistId()) {
 function saveNote() {
   const date = noteInput.dataset.editDate || today;
   if (!noteInput.value.trim()) return;
-  localStorage.setItem('note_' + date, noteInput.value);
+  saveNoteWithTimestamp(date, noteInput.value);
   showFlash('Saved');
 }
 
@@ -994,7 +1011,7 @@ function clearLocal() {
   const keys = [];
   for (let i=0; i<localStorage.length; i++) {
     const k = localStorage.key(i);
-    if (k && k.startsWith('note_')) keys.push(k);
+    if (k && (k.startsWith('note_') || k.startsWith('ts_'))) keys.push(k);
   }
   keys.forEach(k => localStorage.removeItem(k));
   noteInput.value = ''; updateCharCount();
